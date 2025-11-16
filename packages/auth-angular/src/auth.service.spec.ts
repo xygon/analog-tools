@@ -57,9 +57,8 @@ describe('AuthService', () => {
       request: vi.fn(),
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (httpResource as any).mockImplementation(
-      (configOrFn: any, options?: any) => {
+    (httpResource as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (configOrFn: unknown, options?: { defaultValue?: unknown }) => {
         const config =
           typeof configOrFn === 'function' ? configOrFn() : configOrFn;
 

@@ -11,16 +11,14 @@ vi.mock('./functions/wrapTrpcClientWithErrorHandling', () => ({
 }));
 
 describe('createTrpcClientWithAuth', () => {
-  let mockTrpcClient: any;
+  let mockTrpcClient: Record<string, unknown>;
   let mockRequest: ServerRequest | null;
   let mockTrpcHeaders: WritableSignal<HTTPHeaders>;
-  let spyWrapTrpcClientWithErrorHandling: any;
 
   beforeEach(() => {
     // Setup test data
     mockTrpcClient = { client: 'test' };
     mockTrpcHeaders = signal<HTTPHeaders>({});
-    spyWrapTrpcClientWithErrorHandling = vi.spyOn(wrappingModule, 'wrapTrpcClientWithErrorHandling');
 
     // Reset the mock before each test
     vi.clearAllMocks();
@@ -87,12 +85,13 @@ describe('createTrpcClientWithAuth', () => {
   it('should call wrapTrpcClientWithErrorHandling with the client', () => {
     // Arrange
     mockRequest = null;
+    const wrapSpy = vi.spyOn(wrappingModule, 'wrapTrpcClientWithErrorHandling');
     
     // Act
     const result = createTrpcClientWithAuth(mockTrpcClient, mockRequest, mockTrpcHeaders);
     
     // Assert
-    expect(spyWrapTrpcClientWithErrorHandling).toHaveBeenCalledWith(mockTrpcClient);
+    expect(wrapSpy).toHaveBeenCalledWith(mockTrpcClient);
     // The mock returns "wrapped_" + client, so check that
     expect(result).toBe(`wrapped_${mockTrpcClient}`);
   });

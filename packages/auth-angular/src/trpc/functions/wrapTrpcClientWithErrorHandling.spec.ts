@@ -1,7 +1,6 @@
 import { wrapTrpcClientWithErrorHandling } from './wrapTrpcClientWithErrorHandling';
 import { proxyClient } from './createProxy';
 import { createDefaultConfirmation } from './createDefaultConfirmation';
-import { TRPCErrorData } from '../types/trpc';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Explicitly export to ensure Vitest can find the test suite
@@ -17,7 +16,6 @@ vi.mock('./createDefaultConfirmation', () => ({
 
 describe('wrapTrpcClientWithErrorHandling', () => {
   let mockClient: Record<string, unknown>;
-  let mockErrorHandler: (errorData: TRPCErrorData | undefined) => boolean;
 
   beforeEach(() => {
     // Reset mocks
@@ -25,8 +23,6 @@ describe('wrapTrpcClientWithErrorHandling', () => {
 
     // Setup test data
     mockClient = { router: { query: vi.fn() } };
-    // Initialize but not used directly - it's just for type definition
-    mockErrorHandler = vi.fn();
   });
 
   it('should call proxyClient with the client and custom error handler when provided', () => {

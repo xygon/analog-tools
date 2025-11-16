@@ -3,10 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { TRPCClientError } from '@trpc/client';
 
+// Define a type for the mock client structure
+type MockClient = {
+  users: {
+    getUser: {
+      query: ReturnType<typeof vi.fn>;
+    };
+    createUser: {
+      mutate: ReturnType<typeof vi.fn>;
+    };
+  };
+};
+
 describe('proxyClient', () => {
-  let mockClient: Record<string, unknown>;
-  let mockErrorHandler: (errorData: any) => boolean;
-  let proxiedClient: any;
+  let mockClient: MockClient;
+  let mockErrorHandler: (errorData: unknown) => boolean;
+  let proxiedClient: MockClient;
 
   beforeEach(() => {
     // Reset mocks
@@ -28,7 +40,7 @@ describe('proxyClient', () => {
     mockErrorHandler = vi.fn().mockReturnValue(false);
 
     // Create the proxied client
-    proxiedClient = proxyClient(mockClient, mockErrorHandler);
+    proxiedClient = proxyClient(mockClient as unknown as Record<string, unknown>, mockErrorHandler) as MockClient;
   });
 
   it('should create a proxy object with same structure as original client', () => {
@@ -43,17 +55,15 @@ describe('proxyClient', () => {
   it('should proxy query calls and pass through successful responses', () => {
     // Arrange
     const mockResponse = { id: 1, name: 'Test User' };
-    // @ts-expect-error mocking router
     mockClient.users.getUser.query = vi.fn().mockReturnValue(of(mockResponse));
 
     // Act
-    let result: any;
-    proxiedClient.users.getUser.query().subscribe((data: any) => {
+    let result: unknown;
+    proxiedClient.users.getUser.query().subscribe((data: unknown) => {
       result = data;
     });
 
     // Assert
-    // @ts-expect-error mocking router
     expect(mockClient.users.getUser.query).toHaveBeenCalled();
     expect(result).toEqual(mockResponse);
   });
@@ -61,21 +71,19 @@ describe('proxyClient', () => {
   it('should proxy mutate calls and pass through successful responses', () => {
     // Arrange
     const mockResponse = { id: 1, success: true };
-    // @ts-expect-error mocking router
     mockClient.users.createUser.mutate = vi
       .fn()
       .mockReturnValue(of(mockResponse));
 
     // Act
-    let result: any;
+    let result: unknown;
     proxiedClient.users.createUser
       .mutate({ name: 'New User' })
-      .subscribe((data: any) => {
+      .subscribe((data: unknown) => {
         result = data;
       });
 
     // Assert
-    // @ts-expect-error mocking router
     expect(mockClient.users.createUser.mutate).toHaveBeenCalledWith({
       name: 'New User',
     });
@@ -93,7 +101,6 @@ describe('proxyClient', () => {
 
     const trpcError = new TRPCClientError('Unauthorized');
     Object.defineProperty(trpcError, 'data', { value: errorData });
-    // @ts-expect-error mocking router
     mockClient.users.getUser.query = vi
       .fn()
       .mockReturnValue(throwError(() => trpcError));
@@ -113,8 +120,8 @@ describe('proxyClient', () => {
 
   it('should complete the observable without error when handler returns true', () => {
     // Arrange
-    // @ts-expect-error correctly mocking handler
-    mockErrorHandler.mockReturnValue(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockErrorHandler as any).mockReturnValue(true);
 
     const errorData = {
       code: 'UNAUTHORIZED',
@@ -123,7 +130,6 @@ describe('proxyClient', () => {
 
     const trpcError = new TRPCClientError('Unauthorized');
     Object.defineProperty(trpcError, 'data', { value: errorData });
-    // @ts-expect-error mocking router
     mockClient.users.getUser.query = vi
       .fn()
       .mockReturnValue(throwError(() => trpcError));
@@ -147,8 +153,8 @@ describe('proxyClient', () => {
 
   it('should propagate error when handler returns false', () => {
     // Arrange
-    // @ts-expect-error correctly mocking handler
-    mockErrorHandler.mockReturnValue(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockErrorHandler as any).mockReturnValue(false);
 
     const errorData = {
       code: 'UNAUTHORIZED',
@@ -157,7 +163,6 @@ describe('proxyClient', () => {
 
     const trpcError = new TRPCClientError('Unauthorized');
     Object.defineProperty(trpcError, 'data', { value: errorData });
-    // @ts-expect-error mocking router
     mockClient.users.getUser.query = vi
       .fn()
       .mockReturnValue(throwError(() => trpcError));
@@ -181,17 +186,14 @@ describe('proxyClient', () => {
 
   it('should not intercept non-query/mutate methods', () => {
     // Arrange
-    // @ts-expect-error mocking router
-    mockClient.users.getUser.someOtherMethod = vi
-      .fn()
-      .mockReturnValue('original');
+    const mockSomeOtherMethod = vi.fn().mockReturnValue('original');
+    (mockClient.users.getUser as unknown as Record<string, unknown>)['someOtherMethod'] = mockSomeOtherMethod;
 
     // Act
-    const result = proxiedClient.users.getUser.someOtherMethod();
+    const result = ((proxiedClient.users.getUser as unknown as Record<string, unknown>)['someOtherMethod'] as () => string)();
 
     // Assert
     expect(result).toBe('original');
-    // @ts-expect-error mocking router
-    expect(mockClient.users.getUser.someOtherMethod).toHaveBeenCalled();
+    expect(mockSomeOtherMethod).toHaveBeenCalled();
   });
 });

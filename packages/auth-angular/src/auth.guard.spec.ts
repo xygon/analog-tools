@@ -10,12 +10,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('Auth Guards', () => {
   let authService: {
-    isAuthenticated: any;
-    isAuthenticatedAsync: any;
-    login: any;
-    hasRoles: any;
+    isAuthenticated: ReturnType<typeof vi.fn>;
+    isAuthenticatedAsync: ReturnType<typeof vi.fn>;
+    login: ReturnType<typeof vi.fn>;
+    hasRoles: ReturnType<typeof vi.fn>;
   };
-  let router: { navigate: any; url: string };
+  let router: { navigate: ReturnType<typeof vi.fn>; url: string };
 
   beforeEach(() => {
     authService = {
