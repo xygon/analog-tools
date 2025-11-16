@@ -8,7 +8,6 @@ import {
   Tree,
 } from '@nx/devkit';
 import { InitAuthGeneratorSchema } from './schema';
-import * as path from 'path';
 
 /**
  * Gets the version of the generator package to use for installing dependencies
@@ -22,7 +21,7 @@ function getGeneratorVersion(tree: Tree): string {
         return generatorPackageJson.version;
       }
     }
-    
+
     const monorepoPath = 'packages/generator/package.json';
     if (tree.exists(monorepoPath)) {
       const generatorPackageJson = readJson(tree, monorepoPath);
@@ -30,11 +29,15 @@ function getGeneratorVersion(tree: Tree): string {
         return generatorPackageJson.version;
       }
     }
-    
-    logger.warn('Could not determine generator version from package.json, using "latest"');
+
+    logger.warn(
+      'Could not determine generator version from package.json, using "latest"'
+    );
     return 'latest';
   } catch (e) {
-    logger.warn('Could not read generator version, using "latest"');
+    logger.warn(
+      `Could not read generator version, using "latest". error: ${e}`
+    );
     return 'latest';
   }
 }
@@ -44,20 +47,24 @@ function getGeneratorVersion(tree: Tree): string {
  */
 function ensureAuthPackages(tree: Tree) {
   const packageJsonPath = 'package.json';
-  
+
   if (!tree.exists(packageJsonPath)) {
     logger.warn('package.json not found. Skipping package installation.');
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const packageJson = JSON.parse(tree.read(packageJsonPath)!.toString('utf-8'));
-  
+
   // Check if we're in the analog-tools monorepo itself
-  const isAnalogToolsRepo = packageJson.name === 'analog-tools' || 
-                            packageJson.name === '@analog-tools/root';
-  
+  const isAnalogToolsRepo =
+    packageJson.name === 'analog-tools' ||
+    packageJson.name === '@analog-tools/root';
+
   if (isAnalogToolsRepo) {
-    logger.info('✓ Running in analog-tools workspace, packages available locally');
+    logger.info(
+      '✓ Running in analog-tools workspace, packages available locally'
+    );
     return null;
   }
 
@@ -69,12 +76,12 @@ function ensureAuthPackages(tree: Tree) {
   ];
 
   const missingPackages: string[] = [];
-  
+
   for (const pkg of requiredPackages) {
-    const isInstalled = 
+    const isInstalled =
       (packageJson.dependencies && packageJson.dependencies[pkg]) ||
       (packageJson.devDependencies && packageJson.devDependencies[pkg]);
-    
+
     if (!isInstalled) {
       missingPackages.push(pkg);
     }
@@ -86,11 +93,15 @@ function ensureAuthPackages(tree: Tree) {
   }
 
   const version = getGeneratorVersion(tree);
-  logger.info(`Installing missing packages (version ${version}): ${missingPackages.join(', ')}`);
-  
+  logger.info(
+    `Installing missing packages (version ${version}): ${missingPackages.join(
+      ', '
+    )}`
+  );
+
   // Add packages with the same version as the generator
   const dependencies: Record<string, string> = {};
-  missingPackages.forEach(pkg => {
+  missingPackages.forEach((pkg) => {
     dependencies[pkg] = version;
   });
 
@@ -102,10 +113,13 @@ function ensureAuthPackages(tree: Tree) {
  */
 function updateAppConfig(tree: Tree, appConfigPath: string): void {
   if (!tree.exists(appConfigPath)) {
-    logger.warn(`app.config.ts not found at ${appConfigPath}. Skipping update.`);
+    logger.warn(
+      `app.config.ts not found at ${appConfigPath}. Skipping update.`
+    );
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   let content = tree.read(appConfigPath)!.toString('utf-8');
 
   // Check if auth imports already exist
@@ -118,27 +132,32 @@ function updateAppConfig(tree: Tree, appConfigPath: string): void {
   // Add auth imports
   const importRegex = /(import\s+{[^}]+}\s+from\s+['"][^'"]+['"];?\s*\n)+/;
   const lastImportMatch = content.match(importRegex);
-  
+
   if (lastImportMatch) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const insertPosition = lastImportMatch.index! + lastImportMatch[0].length;
     const authImport = `import { authInterceptor, provideAuthClient } from '@analog-tools/auth/angular';\n`;
-    content = content.slice(0, insertPosition) + authImport + content.slice(insertPosition);
+    content =
+      content.slice(0, insertPosition) +
+      authImport +
+      content.slice(insertPosition);
   }
 
   // Add provideAuthClient() to providers
   const providersMatch = content.match(/providers:\s*\[([\s\S]*?)\]/);
   if (providersMatch) {
     const providersContent = providersMatch[1];
-    
+
     // Check if provideAuthClient is already there
     if (!providersContent.includes('provideAuthClient')) {
       // Find the last provider before the closing bracket
-      const lastProviderRegex = /,\s*\n\s*(\w+\([^)]*\)|provide\w+\([^)]*\))\s*,?\s*$/;
+      const lastProviderRegex =
+        /,\s*\n\s*(\w+\([^)]*\)|provide\w+\([^)]*\))\s*,?\s*$/;
       const updatedProviders = providersContent.replace(
         lastProviderRegex,
         `,\n    $1,\n    provideAuthClient(),`
       );
-      
+
       // If no match, it might be an empty or simple providers array
       if (updatedProviders === providersContent) {
         content = content.replace(
@@ -203,37 +222,44 @@ function updateAppConfig(tree: Tree, appConfigPath: string): void {
  */
 function updateViteConfig(tree: Tree, viteConfigPath: string): void {
   if (!tree.exists(viteConfigPath)) {
-    logger.warn(`vite.config.ts not found at ${viteConfigPath}. Skipping update.`);
+    logger.warn(
+      `vite.config.ts not found at ${viteConfigPath}. Skipping update.`
+    );
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   let content = tree.read(viteConfigPath)!.toString('utf-8');
 
   // Find ssr.noExternal array - handle both single-line and multi-line formats
   const noExternalRegex = /ssr:\s*{\s*noExternal:\s*\[([\s\S]*?)\]/;
   const match = content.match(noExternalRegex);
-  
+
   // Check if @analog-tools/auth is already in noExternal array specifically
-  if (match && (match[1].includes("'@analog-tools/auth'") || match[1].includes('"@analog-tools/auth"'))) {
+  if (
+    match &&
+    (match[1].includes("'@analog-tools/auth'") ||
+      match[1].includes('"@analog-tools/auth"'))
+  ) {
     logger.info('@analog-tools/auth already in vite.config.ts noExternal');
     return;
   }
 
   if (match) {
     const noExternalContent = match[1];
-    
+
     // Parse existing items, handling both string formats and whitespace
     const items = noExternalContent
       .split(',')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
     // Add the new item
     items.push("'@analog-tools/auth'");
-    
+
     // Format as a single-line array if short, multi-line if long
     const itemsStr = items.join(', ');
-    
+
     content = content.replace(
       noExternalRegex,
       `ssr: {\n      noExternal: [${itemsStr}]`
@@ -250,9 +276,11 @@ function updateViteConfig(tree: Tree, viteConfigPath: string): void {
       // Add ssr section before build section
       const buildMatch = content.match(/build:\s*{/);
       if (buildMatch) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const insertPos = buildMatch.index!;
         const ssrConfig = `\n    ssr: {\n      noExternal: ['@analog-tools/auth'],\n    },\n\n    `;
-        content = content.slice(0, insertPos) + ssrConfig + content.slice(insertPos);
+        content =
+          content.slice(0, insertPos) + ssrConfig + content.slice(insertPos);
       }
     }
   }
@@ -272,7 +300,7 @@ function findViteConfigPath(tree: Tree, projectRoot: string): string | null {
     joinPathFragments(projectRoot, 'vite.config.mjs'),
   ];
 
-  return possiblePaths.find(p => tree.exists(p)) || null;
+  return possiblePaths.find((p) => tree.exists(p)) || null;
 }
 
 export async function initAuthGenerator(
@@ -284,7 +312,9 @@ export async function initAuthGenerator(
 
   if (projectConfig.projectType !== 'application') {
     throw new Error(
-      `Project "${options.project}" must be an application. Found "${projectConfig.projectType ?? 'unknown'}".`
+      `Project "${options.project}" must be an application. Found "${
+        projectConfig.projectType ?? 'unknown'
+      }".`
     );
   }
 
@@ -320,8 +350,11 @@ export const authConfig: AnalogAuthConfig = {
   logger.info('✓ Created auth.config.ts');
 
   // Step 2: Generate auth middleware in src/server/middleware/
-  const middlewarePath = joinPathFragments(projectRoot, 'src/server/middleware');
-  
+  const middlewarePath = joinPathFragments(
+    projectRoot,
+    'src/server/middleware'
+  );
+
   // Create auth middleware directly
   const authMiddlewareContent = `import { useAnalogAuth } from '@analog-tools/auth';
 import { defineEventHandler, H3Event } from 'h3';
@@ -335,7 +368,7 @@ export default defineEventHandler(async (event: H3Event) => {
   return useAnalogAuth(authConfig, event);
 });
 `;
-  
+
   const authMiddlewarePath = joinPathFragments(middlewarePath, 'auth.ts');
   tree.write(authMiddlewarePath, authMiddlewareContent);
   logger.info('✓ Created server middleware at src/server/middleware/auth.ts');
@@ -359,17 +392,19 @@ export default defineEventHandler(async (event: H3Event) => {
   logger.info('');
   logger.info('✓ Authentication initialization complete!');
   logger.info('');
-  
+
   if (installTask) {
     logger.info('Installing packages...');
   }
-  
+
   logger.info('Next steps:');
   logger.info('  1. Configure your authentication provider in auth.config.ts');
-  logger.info('  2. Set up environment variables (AUTH_ISSUER, AUTH_CLIENT_ID, etc.)');
+  logger.info(
+    '  2. Set up environment variables (AUTH_ISSUER, AUTH_CLIENT_ID, etc.)'
+  );
   logger.info('  3. Configure Redis connection (REDIS_URL, SESSION_SECRET)');
   logger.info('');
-  
+
   return installTask;
 }
 

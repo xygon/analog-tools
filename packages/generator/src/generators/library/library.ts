@@ -78,7 +78,7 @@ export async function libraryGenerator(
     tree.write(path.join(libPath, 'pages/.gitkeep'), '');
   }
   tree.write(path.join(libPath, 'services/.gitkeep'), '');
-  
+
   // Create models folder in src/ (only .gitkeep if no schema will be generated)
   if (!(options.api && !options.skipExamples)) {
     tree.write(path.join(projectRoot, 'src/models/.gitkeep'), '');
@@ -152,7 +152,7 @@ export async function libraryGenerator(
       `${libSourceRoot}/lib/${moduleNames.fileName}/${moduleNames.fileName}.component.spec.ts`,
       `${libSourceRoot}/lib/${moduleNames.fileName}/${moduleNames.fileName}.model.ts`,
     ];
-    libExamples.forEach(file => tree.exists(file) && tree.delete(file));
+    libExamples.forEach((file) => tree.exists(file) && tree.delete(file));
     tree.write(`${libSourceRoot}/lib/${moduleNames.fileName}/.gitkeep`, '');
 
     // Remove pages examples if pages were generated
@@ -161,20 +161,28 @@ export async function libraryGenerator(
         `${libSourceRoot}/pages/${moduleNames.fileName}/${moduleNames.fileName}.page.ts`,
         `${libSourceRoot}/pages/${moduleNames.fileName}/(${moduleNames.fileName}).page.ts`,
       ];
-      pagesExamples.forEach(file => tree.exists(file) && tree.delete(file));
+      pagesExamples.forEach((file) => tree.exists(file) && tree.delete(file));
       tree.write(`${libSourceRoot}/pages/${moduleNames.fileName}/.gitkeep`, '');
     }
 
     // Remove content examples if content was generated
     if (options.contentRoutes) {
       const contentExample = `${libSourceRoot}/content/${moduleNames.fileName}/example-post.md`;
-      tree.exists(contentExample) && tree.delete(contentExample);
-      tree.write(`${libSourceRoot}/content/${moduleNames.fileName}/.gitkeep`, '');
+      if (tree.exists(contentExample)) {
+        tree.delete(contentExample);
+      }
+      tree.write(
+        `${libSourceRoot}/content/${moduleNames.fileName}/.gitkeep`,
+        ''
+      );
     }
 
     // Add .gitkeep for API directory if api was generated (example was not generated due to skipExamples)
     if (options.api) {
-      tree.write(`${libSourceRoot}/backend/api/routes/api/${moduleNames.fileName}/.gitkeep`, '');
+      tree.write(
+        `${libSourceRoot}/backend/api/routes/api/${moduleNames.fileName}/.gitkeep`,
+        ''
+      );
     }
   }
 

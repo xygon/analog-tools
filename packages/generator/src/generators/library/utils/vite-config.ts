@@ -103,7 +103,7 @@ export function findViteConfigPath(
     }
   } catch (e) {
     logger.warn(
-      `Could not read project configuration for '${projectName}'. Relying on standard path checks.`
+      `Could not read project configuration for '${projectName}'. Relying on standard path checks. error: ${e}`
     );
   }
 
